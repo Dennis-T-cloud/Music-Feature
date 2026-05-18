@@ -57,7 +57,7 @@ MaestroML/
 **1. Clone the repository**
 
 ```bash
-git clone https://github.com/<your-username>/MaestroML.git
+git clone https://github.com/Dennis-T-cloud/Music-Feature.git
 cd MaestroML
 ```
 
