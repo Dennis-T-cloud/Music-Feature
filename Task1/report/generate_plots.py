@@ -80,9 +80,10 @@ def plot_stage1_curves():
     ea = [r["eval_accuracy"] for r in evals]
 
     best_idx = int(np.argmin(el))
+    n_steps_s1 = int(max(r["step"] for r in train))
 
     fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
-    fig.suptitle("Stage 1 — MAESTRO General Fine-tuning (500 steps, 128 files, LoRA r=8)",
+    fig.suptitle(f"Stage 1 — MAESTRO General Fine-tuning ({n_steps_s1} steps, 128 files, LoRA r=8)",
                  fontsize=13, fontweight="bold", y=1.01)
 
     ax = axes[0]
@@ -126,9 +127,10 @@ def plot_stage2_curves():
     ea = [r["eval_accuracy"] for r in evals]
 
     best_idx = int(np.argmin(el))
+    n_steps_s2 = int(max(r["step"] for r in train))
 
     fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
-    fig.suptitle("Stage 2 — Chopin Étude Style Fine-tuning (300 steps, LoRA continued from Stage 1)",
+    fig.suptitle(f"Stage 2 — Chopin Étude Style Fine-tuning ({n_steps_s2} steps w/ early stopping, LoRA continued from Stage 1)",
                  fontsize=13, fontweight="bold", y=1.01)
 
     ax = axes[0]
@@ -167,7 +169,7 @@ def plot_combined_timeline():
     t1_train, t1_evals = load_training_log(STAGE1_CSV)
     t2_train, t2_evals = load_training_log(STAGE2_CSV)
 
-    OFFSET = 500  # Stage 2 starts after Step 500
+    OFFSET = int(max(r["step"] for r in t1_train))  # dynamic: Stage 2 starts after Stage 1 ends
     # Stage 1 MAESTRO val eval points (not on Chopin, different scale — plot separately)
     t1_steps = [r["step"] for r in t1_train]
     t1_loss  = [r["loss"] for r in t1_train]
@@ -181,6 +183,7 @@ def plot_combined_timeline():
     t2_es = [r["step"] + OFFSET for r in t2_evals]
     t2_el = [r["eval_loss"] for r in t2_evals]
     best_step_abs = t2_es[int(np.argmin(t2_el))]
+    t2_end = t2_steps[-1]
 
     fig, ax = plt.subplots(figsize=(14, 5))
     ax.plot(t1_steps, t1_loss, color=C_TRAIN_RAW, lw=1, alpha=0.3)
@@ -188,15 +191,15 @@ def plot_combined_timeline():
     ax.plot(t2_steps, t2_loss, color=C_TRAIN_RAW, lw=1, alpha=0.3)
     ax.plot(t2_steps, t2_sl, color=C_S2, lw=2, label="Stage 2 train loss (Chopin Étude)")
     ax.plot(t2_es, t2_el, color=C_EVAL, marker="o", ms=5, lw=2, label="Chopin Test eval loss")
-    ax.axvline(OFFSET, color="#555", ls="--", lw=1.5, label="Stage boundary (step 500)")
+    ax.axvline(OFFSET, color="#555", ls="--", lw=1.5, label=f"Stage boundary (step {OFFSET})")
     ax.axvline(best_step_abs, color=C_EVAL, ls=":", lw=1.5,
                label=f"Best Chopin test loss (step {best_step_abs}, loss={min(t2_el):.4f})")
 
     # Shade stages
     ax.axvspan(0, OFFSET, alpha=0.05, color=C_S1)
-    ax.axvspan(OFFSET, OFFSET + 300, alpha=0.05, color=C_S2)
-    ax.text(250, 2.55, "Stage 1\n(MAESTRO)", ha="center", color=C_S1, fontsize=10, fontweight="bold")
-    ax.text(OFFSET + 150, 2.55, "Stage 2\n(Chopin)", ha="center", color=C_S2, fontsize=10, fontweight="bold")
+    ax.axvspan(OFFSET, t2_end, alpha=0.05, color=C_S2)
+    ax.text(OFFSET // 2, 2.55, "Stage 1\n(MAESTRO)", ha="center", color=C_S1, fontsize=10, fontweight="bold")
+    ax.text(OFFSET + (t2_end - OFFSET) // 2, 2.55, "Stage 2\n(Chopin)", ha="center", color=C_S2, fontsize=10, fontweight="bold")
 
     ax.set_title("Two-Stage Training Timeline", fontsize=14, fontweight="bold")
     ax.set_xlabel("Cumulative Training Step"); ax.set_ylabel("Cross-Entropy Loss")
@@ -221,16 +224,19 @@ def plot_threeway_comparison():
       After Stage 2 (best, step50) : step=50 of stage2 log
     """
     _, t2_evals = load_training_log(STAGE2_CSV)
-    s1_on_chopin_loss = t2_evals[0]["eval_loss"]      # 1.4131
-    s1_on_chopin_acc  = t2_evals[0]["eval_accuracy"]  # 0.4889
-    s2_best_loss      = t2_evals[1]["eval_loss"]      # step 50
-    s2_best_acc       = t2_evals[1]["eval_accuracy"]
+    s1_on_chopin_loss = t2_evals[0]["eval_loss"]      # step 0: Stage 1 model on Chopin test
+    s1_on_chopin_acc  = t2_evals[0]["eval_accuracy"]
+    best_idx_s2       = int(np.argmin([r["eval_loss"] for r in t2_evals]))
+    s2_best_eval      = t2_evals[best_idx_s2]
+    s2_best_loss      = s2_best_eval["eval_loss"]
+    s2_best_acc       = s2_best_eval["eval_accuracy"]
+    s2_best_step      = int(s2_best_eval["step"])
 
     # Baseline from existing analysis
     baseline_loss = 1.4720
     baseline_acc  = 0.4762
 
-    labels = ["Pretrained\nAria (Baseline)", "After Stage 1\n(MAESTRO LoRA)", "After Stage 2\n(Chopin LoRA, best)"]
+    labels = ["Pretrained\nAria (Baseline)", "After Stage 1\n(MAESTRO LoRA)", f"After Stage 2\n(Chopin LoRA, best@step{s2_best_step})"]
     losses = [baseline_loss, s1_on_chopin_loss, s2_best_loss]
     accs   = [baseline_acc,  s1_on_chopin_acc,  s2_best_acc]
     colors = [C_BASE, C_S1, C_S2]

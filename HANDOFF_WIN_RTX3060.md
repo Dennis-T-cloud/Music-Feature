@@ -1,3 +1,6 @@
+你的 Windows 机器（stage2_chopin_improved/）跑完了200步，但 没有eval数据（handoff命令中 --eval-max-files 0 被解释为"评估0个文件"而不是"不限制"），无法用来比较——这个结果暂时只能存档。
+
+
 # Handoff Manual — Win RTX 3060 台式机操作指南
 **任务**：下载 Aria 基础模型 → Stage 2 改进重训 → 生成 MIDI  
 **预计总时间**：环境配置 15 min + 模型下载 10 min + 训练 30 min + 生成 5 min  
