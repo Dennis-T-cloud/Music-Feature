@@ -1,4 +1,4 @@
-你的 Windows 机器（stage2_chopin_improved/）跑完了200步，但 没有eval数据（handoff命令中 --eval-max-files 0 被解释为"评估0个文件"而不是"不限制"），无法用来比较——这个结果暂时只能存档。
+你的 Windows 机器（stage2_chopin_improved/）已按可对比口径重跑：200 步，`--eval-max-files 6`，产生 9 个 Chopin test eval 点。best eval loss = 1.4129（step 200），可以和其他人的结果比较；但它没有低于旧阈值 1.4106，所以应记录为“可比较但未超过原 Stage 2 best”的尝试，不替代之前的最佳 Stage 2 结果。
 
 
 # Handoff Manual — Win RTX 3060 台式机操作指南
