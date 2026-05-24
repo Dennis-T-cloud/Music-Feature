@@ -34,25 +34,3 @@ Task1/
 
 The full MAESTRO dataset and the Aria pretrained base model are not committed because they are large external assets.
 See `dataset/README.md` and `train/README.md` for how to download them.
-
-## Final Test Result
-
-Evaluation target: MAESTRO test split, Chopin Etude subset.
-
-| Model state | Test loss | Test accuracy |
-| --- | ---: | ---: |
-| Original Aria, no fine-tuning | 1.4720 | 0.4762 |
-| After Stage 1 MAESTRO fine-tuning | 1.4131 | 0.4889 |
-| After Stage 2 Chopin Etude best checkpoint | 1.4106 | 0.4850 |
-
-The best final adapter is in:
-
-```text
-result/stage2_chopin_etude_best_adapter/
-```
-
-The generated MIDI sample is:
-
-```text
-result/midi/generated_twostage_chopin_best.mid
-```
