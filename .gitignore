@@ -16,6 +16,14 @@ build/
 venv/
 env/
 ENV/
+.conda/
+
+# Local installers / archives
+*.exe
+*.zip
+*.tar
+*.tar.gz
+*.tgz
 
 # Jupyter
 .ipynb_checkpoints/
@@ -32,6 +40,19 @@ data/
 # Outputs (generated artifacts — do not commit large files)
 outputs/*.mid
 outputs/*.wav
+
+# Local model/vendor/cache artifacts
+Task1/.cache/
+Task1/.vendor/
+**/.cache/huggingface/
+**/model.safetensors
+**/adapter_model.safetensors
+
+# Local Stage 2 training artifacts not needed by the report.
+# Keep the log/curve outputs for analysis and plots.
+Task1/result/stage2_chopin_improved/*
+!Task1/result/stage2_chopin_improved/training_log.csv
+!Task1/result/stage2_chopin_improved/training_curves.png
 
 # IDE
 .vscode/
