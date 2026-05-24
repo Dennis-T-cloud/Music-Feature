@@ -7,7 +7,7 @@ The method is a two-stage fine-tuning setup:
 ```text
 Aria pretrained symbolic MIDI model
   -> Stage 1: LoRA fine-tuning on MAESTRO
-  -> Stage 2: continued LoRA fine-tuning on Chopin Etude subset
+  -> Stage 2: continued LoRA fine-tuning on Chopin Etude subset with early stopping
 ```
 
 ## Folder Structure

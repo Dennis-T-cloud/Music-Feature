@@ -7,6 +7,7 @@ This folder contains the final Task 1 artifacts.
 - `stage1_maestro_best_adapter/`: best LoRA adapter after MAESTRO general fine-tuning
 - `stage2_chopin_etude_best_adapter/`: final best LoRA adapter after Chopin Etude style fine-tuning
 - `plots/baseline_vs_twostage_zoomed_bar.png`: baseline-vs-fine-tuned comparison plot
+- `plots/two_stage_dropout015_earlystop_timeline.png`: two-stage training timeline with early stopping
 - `stage1_maestro_training_log.csv`: Stage 1 log
 - `stage2_chopin_etude_training_log.csv`: Stage 2 log
 - `midi/generated_twostage_chopin_best.mid`: generated MIDI from the final fine-tuned model

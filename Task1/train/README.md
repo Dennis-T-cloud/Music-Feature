@@ -47,13 +47,14 @@ python Task1\train\aria_finetune_maestro.py `
   --lr 5e-5 `
   --lora-r 8 `
   --lora-alpha 16 `
+  --lora-dropout 0.15 `
   --grad-clip 0.5 `
   --eval-split validation `
   --eval-max-files 32 `
   --eval-every 50 `
   --early-stop-patience 6 `
   --early-stop-min-delta 0.005 `
-  --save-dir checkpoints\aria_lora_maestro_stage1
+  --save-dir checkpoints\aria_lora_maestro_stage1_dropout015
 ```
 
 ## Stage 2: Chopin Etude Style LoRA Fine-Tuning
@@ -61,7 +62,7 @@ python Task1\train\aria_finetune_maestro.py `
 ```powershell
 python Task1\train\aria_finetune_maestro.py `
   --train-mode lora `
-  --resume-adapter checkpoints\aria_lora_maestro_stage1\best_checkpoint `
+  --resume-adapter checkpoints\aria_lora_maestro_stage1_dropout015\best_checkpoint `
   --composer Chopin `
   --title-contains Etude `
   --max-files 32 `
@@ -70,18 +71,21 @@ python Task1\train\aria_finetune_maestro.py `
   --lr 2e-5 `
   --lora-r 8 `
   --lora-alpha 16 `
+  --lora-dropout 0.15 `
   --grad-clip 0.5 `
   --eval-split test `
   --eval-max-files 6 `
   --eval-every 50 `
-  --save-dir checkpoints\aria_lora_chopin_stage2
+  --early-stop-patience 3 `
+  --early-stop-min-delta 0.001 `
+  --save-dir checkpoints\aria_lora_chopin_stage2_dropout015_earlystop
 ```
 
 ## Generate MIDI From Final Adapter
 
 ```powershell
 python Task1\train\aria_generate.py `
-  --adapter-dir checkpoints\aria_lora_chopin_stage2\best_checkpoint `
+  --adapter-dir checkpoints\aria_lora_chopin_stage2_dropout015_earlystop\best_checkpoint `
   --output outputs\generated_twostage_chopin_best.mid `
   --max-length 1024 `
   --temperature 0.9 `
