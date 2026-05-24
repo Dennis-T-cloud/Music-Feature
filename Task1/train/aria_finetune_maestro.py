@@ -288,6 +288,7 @@ def main() -> None:
     args = parser.parse_args()
 
     import torch
+    import torch.distributed.tensor  # Ensures PEFT can find DTensor on Windows.
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
     random.seed(args.seed)
