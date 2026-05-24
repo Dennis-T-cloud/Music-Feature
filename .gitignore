@@ -54,6 +54,16 @@ Task1/result/stage2_chopin_improved/*
 !Task1/result/stage2_chopin_improved/training_log.csv
 !Task1/result/stage2_chopin_improved/training_curves.png
 
+# Scratch 300-step probe; final rerun is stored separately.
+Task1/result/stage2_chopin_improved_300steps/
+
+# Final comparable Stage 2 rerun. Keep only handoff artifacts.
+Task1/result/stage2_chopin_final/*
+!Task1/result/stage2_chopin_final/training_log.csv
+!Task1/result/stage2_chopin_final/training_curves.png
+!Task1/result/stage2_chopin_final/adapter_config.json
+!Task1/result/stage2_chopin_final/adapter_model.safetensors
+
 # IDE
 .vscode/
 .idea/

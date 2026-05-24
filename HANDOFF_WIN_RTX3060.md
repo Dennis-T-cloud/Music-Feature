@@ -1,5 +1,7 @@
 ## ★ 当前任务（第三次跑，优先执行）
 
+完成结果：`Task1/result/stage2_chopin_final/` 已跑完 300 步，13 个 eval 点；best eval loss = **1.4111**（step 275/300 附近），优于上次 1.4129，属于有效改进。已保存 `training_log.csv`、`adapter_model.safetensors`、`adapter_config.json`。
+
 上次 Win 机器跑了 200 步（lr=5e-6），eval loss 在第 200 步仍单调下降（1.4204→1.4129），**没有收敛**，也没有保存 adapter。本次目标：
 - 延长到 **300 步**（估计约 45 min）
 - 加上 `--save-dir`，确保 adapter 被保存下来
