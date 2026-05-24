@@ -1,116 +1,187 @@
-# MaestroML: Symbolic Music Feature Engineering and Temporal Analysis
+# Music Feature — CSE 153 / 253 Assignment 2
 
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
-[![scikit-learn](https://img.shields.io/badge/scikit--learn-Machine%20Learning-orange.svg)](https://scikit-learn.org/)
+**Course:** UCSD CSE 153 / 253 · Spring 2026  
+**Group members:** Dennis (Dennis-T-cloud), HanyuanZhang25
 
-## Introduction
+---
 
-MaestroML is a lightweight symbolic music (MIDI) analysis pipeline built for CSE 153 Assignment 2. Rather than processing raw audio waveforms, it works directly on the symbolic structure of MIDI files — extracting a handcrafted 36-dimensional feature vector that encodes pitch, rhythm, dynamics, and voice structure. The goal is high-accuracy music classification and temporal reasoning at minimal computational cost, with features that remain musically interpretable.
+## Tasks
 
-## Key Features
+| Task | Topic | Status |
+| --- | --- | --- |
+| Task 1 | Symbolic unconditioned music generation | ✅ Complete |
+| Task 2 | *(in progress)* | 🔧 |
 
-**Task 1: Composer Classification**
+---
 
-Given a MIDI excerpt, the pipeline predicts which composer wrote it. Features are extracted along dimensions such as harmonic motion (pitch-class histogram), melodic interval distribution (stepwise vs. leap ratios), velocity dynamics, and polyphony level. A Random Forest classifier with 500 trees is trained on these 36-dimensional vectors and evaluated with 5-fold cross-validation.
+## Task 1: Symbolic Unconditioned Generation
 
-**Task 2: Temporal Order Prediction**
+### Method
 
-Given two MIDI excerpts from the same piece, the model determines which comes first. The input is a 115-dimensional vector formed by concatenating the features of excerpt A, excerpt B, their element-wise difference, and boundary pitch features. Training uses a reverse-pair augmentation strategy: each labeled pair (A, B, 1) generates a symmetric pair (B, A, 0), doubling the dataset and teaching the model to capture temporal directionality.
+Two-stage LoRA fine-tuning on the pretrained **Aria** symbolic MIDI Transformer (`loubb/aria-medium-base`, 2.63 GB):
 
-**Generative Plugin**
+```
+Aria pretrained model
+  → Stage 1: LoRA fine-tuning on 128 MAESTRO train files (400 steps)
+  → Stage 2: continued LoRA fine-tuning on Chopin Étude subset (300 steps, converged)
+```
 
-A Markov-chain-based generator produces novel MIDI sequences conditioned on the style parameters derived from Task 1 composer profiles. Two output files are produced: `symbolic_conditioned.mid` (style-constrained) and `symbolic_unconditioned.mid` (unconstrained random walk).
+**LoRA config:** r=8, alpha=16, dropout=0.15  
+**Stage 2 final hyperparameters:** lr=5e-6, eval-every=25, early-stop patience=4
 
-## Tech Stack
+### Results (Chopin Étude test split)
 
-- Language: Python 3.8+
-- MIDI processing: `miditoolkit`, `mido`
-- Feature engineering: `NumPy`, `SciPy`
-- Machine learning: `scikit-learn` (RandomForestClassifier)
-- Visualization: `matplotlib`, `seaborn`
-- Notebook: `Jupyter`
+| Model | Test Loss | Test Acc |
+| --- | --- | --- |
+| Pretrained Aria (baseline) | 1.4720 | 47.62% |
+| After Stage 1 (MAESTRO LoRA) | 1.4204 | 48.00% |
+| **After Stage 2 (final, converged)** | **1.4111** | **48.05%** |
+
+Stage 2 best checkpoint: step 275 of 300 (loss plateau confirmed at step 300).  
+Full experiment log: [`notebooks/task1_analysis.ipynb`](notebooks/task1_analysis.ipynb)
+
+### Key finding
+
+The original Stage 2 run (lr=1e-5) overfit severely after step 50 (loss rose from 1.4106 to 1.4523 by step 300). Reducing lr to 5e-6 eliminated overfitting entirely — eval loss decreased monotonically across all 300 steps and converged.
+
+### Generated output
+
+| File | Description |
+| --- | --- |
+| `outputs/symbolic_unconditioned.mid` | Unconditioned generation from final adapter (tempo-fixed) |
+| `outputs/symbolic_conditioned.mid` | Conditioned generation (tempo-fixed) |
+
+> **Note:** Aria's `to_midi()` has a known bug — it writes BPM (120) directly as μs/beat, producing a 0.006 s file. Both outputs have been fixed (`set_tempo=500000`).
+
+### Adapters
+
+| Adapter | Path | Loss |
+| --- | --- | --- |
+| Stage 1 best | `Task1/result/stage1_maestro_best_adapter/` | MAESTRO val 1.7248 |
+| Stage 2 final ★ | `Task1/result/stage2_chopin_final/` | Chopin test 1.4111 |
+| Stage 2 teammate | `Task1/result/stage2_chopin_etude_best_adapter/` | Chopin test 1.4150 |
+
+---
 
 ## Project Structure
 
 ```
-MaestroML/
-├── README.md
-├── requirements.txt
-├── .gitignore
-├── workbook.ipynb              # Main analysis notebook for peer review
-├── data/                       # MIDI dataset (not tracked by git)
-│   └── <composer_name>/        # One subdirectory per composer
-│       └── *.mid
-├── outputs/                    # Generated MIDI files
-│   ├── symbolic_conditioned.mid
-│   └── symbolic_unconditioned.mid
-├── notebooks/                  # Scratch / exploratory notebooks
-└── src/
-    ├── extract_features.py     # 36-dim feature extraction from MIDI
-    ├── task1_composer.py       # ComposerClassifier class
-    ├── task2_temporal.py       # TemporalPredictor class (115-dim)
-    └── generative_plugin.py    # Markov-chain MIDI generator
+Music-Feature/
+├── Task1/
+│   ├── dataset/
+│   │   └── chopin_etude_metadata.csv   # 68-file Chopin subset metadata
+│   ├── train/
+│   │   ├── aria_finetune_maestro.py    # LoRA training script
+│   │   ├── aria_generate.py            # MIDI generation script
+│   │   ├── aria_download_weights.py    # Aria base model downloader
+│   │   └── requirements_task1.txt
+│   ├── report/
+│   │   └── generate_plots.py           # Regenerates all analysis figures
+│   └── result/
+│       ├── stage1_maestro_best_adapter/
+│       ├── stage2_chopin_final/        # ★ official final adapter
+│       ├── stage2_chopin_etude_best_adapter/
+│       ├── stage2_chopin_improved/
+│       ├── stage1_maestro_training_log.csv
+│       ├── stage2_chopin_etude_training_log.csv
+│       └── plots/                      # 10 PNG analysis figures
+├── notebooks/
+│   └── task1_analysis.ipynb            # Full experiment log & analysis
+├── outputs/
+│   ├── symbolic_unconditioned.mid      # ★ final generated MIDI (tempo-fixed)
+│   └── symbolic_conditioned.mid
+├── workbook.ipynb                      # Assignment submission notebook
+├── HANDOFF_WIN_RTX3060.md              # Windows GPU training instructions
+└── data/                               # MAESTRO dataset (not tracked)
 ```
 
-## Quick Start
+---
 
-**1. Clone the repository**
+## Reproducing Task 1
+
+### Requirements
 
 ```bash
-git clone https://github.com/Dennis-T-cloud/Music-Feature.git
-cd MaestroML
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+pip install transformers peft pandas matplotlib mido pretty_midi huggingface_hub safetensors tqdm
 ```
 
-**2. Install dependencies**
+### 1 — Download base model
 
 ```bash
-pip install -r requirements.txt
+python Task1/train/aria_download_weights.py \
+  --repo-id loubb/aria-medium-base \
+  --filename model.safetensors \
+  --local-dir Task1/.vendor/aria-hf
 ```
 
-**3. Prepare data**
-
-Place MIDI files under `data/` with one subdirectory per composer:
-
-```
-data/
-├── beethoven/
-│   ├── sonata01.mid
-│   └── sonata02.mid
-└── chopin/
-    ├── nocturne01.mid
-    └── nocturne02.mid
-```
-
-**4. Run the workbook**
+### 2 — Stage 1: MAESTRO fine-tuning
 
 ```bash
-jupyter notebook workbook.ipynb
+python Task1/train/aria_finetune_maestro.py \
+  --model-dir Task1/.vendor/aria-hf \
+  --maestro-root data/maestro-v3.0.0 \
+  --split train --max-files 128 \
+  --train-mode lora --lora-r 8 --lora-alpha 16 --lora-dropout 0.15 \
+  --max-steps 400 --eval-split validation --eval-every 50 \
+  --save-dir Task1/result/stage1_maestro_best_adapter --seed 42
 ```
 
-Run all cells from top to bottom. The notebook will extract features, train both classifiers, and write the two generated MIDI files to `outputs/`.
+### 3 — Stage 2: Chopin Étude fine-tuning
 
-## Feature Vector Layout
+```bash
+python Task1/train/aria_finetune_maestro.py \
+  --model-dir Task1/.vendor/aria-hf \
+  --maestro-root data/maestro-v3.0.0 \
+  --split train --composer "Chopin" --title-contains "Etude" --max-files 64 \
+  --train-mode lora --resume-adapter Task1/result/stage1_maestro_best_adapter \
+  --lora-r 8 --lora-alpha 16 --lora-dropout 0.15 \
+  --lr 5e-6 --max-steps 300 \
+  --eval-split test --eval-max-files 6 --eval-every 25 \
+  --early-stop-patience 4 --early-stop-min-delta 0.001 \
+  --save-dir Task1/result/stage2_chopin_final --seed 42
+```
 
-The 36-dimensional feature vector produced by `extract_features.py` is structured as follows:
+### 4 — Generate MIDI
 
-| Dimensions | Description |
-|------------|-------------|
-| [0:12] | Normalized pitch-class histogram |
-| [12:16] | Pitch statistics (mean, std, min, max) |
-| [16:20] | Duration statistics (mean, std, min, max) |
-| [20:22] | Velocity statistics (mean, std) |
-| [22:27] | Interval features (absolute mean, std, stepwise ratio, skip ratio, leap ratio) |
-| [27] | Upward motion ratio |
-| [28:30] | Inter-onset interval (mean, std) |
-| [30] | Polyphony level |
-| [31] | Note density (notes per second) |
-| [32:36] | Reserved |
+```bash
+python Task1/train/aria_generate.py \
+  --model-id Task1/.vendor/aria-hf \
+  --adapter-dir Task1/result/stage2_chopin_final \
+  --temperature 0.85 --max-length 4096 \
+  --output outputs/symbolic_unconditioned_raw.mid --seed 42
 
-## Output Files
+# Fix Aria tempo bug
+python -c "
+import mido
+mid = mido.MidiFile('outputs/symbolic_unconditioned_raw.mid')
+new = mido.MidiFile(type=mid.type, ticks_per_beat=mid.ticks_per_beat)
+for track in mid.tracks:
+    t = mido.MidiTrack()
+    for msg in track:
+        t.append(mido.MetaMessage('set_tempo', tempo=500000, time=msg.time)
+                 if msg.type == 'set_tempo' else msg)
+    new.tracks.append(t)
+new.save('outputs/symbolic_unconditioned.mid')
+"
+```
 
-After running `workbook.ipynb`, the following files are written to `outputs/`:
+### 5 — Regenerate analysis plots
 
-- `symbolic_conditioned.mid` — generated with style parameters derived from the target composer's median feature profile
-- `symbolic_unconditioned.mid` — generated with no style prior (random walk baseline)
+```bash
+/opt/anaconda3/envs/cse153-hw4/bin/python Task1/report/generate_plots.py
+```
 
-Both files can be played back with any MIDI-capable application such as GarageBand, MuseScore, or fluidsynth.
+Figures saved to `Task1/result/plots/`.
+
+---
+
+## Tech Stack
+
+| Component | Library |
+| --- | --- |
+| Base model | Aria (`loubb/aria-medium-base`) |
+| LoRA fine-tuning | `transformers` + `peft` |
+| MIDI processing | `mido`, `pretty_midi` |
+| Analysis & plots | `matplotlib`, `pandas`, `numpy` |
+| Training hardware | NVIDIA RTX 3060 (Win) / Apple M3 (inference only) |
