@@ -27,6 +27,7 @@ PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 STAGE1_CSV        = PROJECT_ROOT / "Task1" / "result" / "stage1_maestro_training_log.csv"
 STAGE2_CSV        = PROJECT_ROOT / "Task1" / "result" / "stage2_chopin_etude_training_log.csv"
 STAGE2_WIN_CSV    = PROJECT_ROOT / "Task1" / "result" / "stage2_chopin_improved" / "training_log.csv"
+STAGE2_FINAL_CSV  = PROJECT_ROOT / "Task1" / "result" / "stage2_chopin_final" / "training_log.csv"
 CHOPIN_META = PROJECT_ROOT / "Task1" / "dataset" / "chopin_etude_metadata.csv"
 GEN_MIDI    = PROJECT_ROOT / "outputs" / "symbolic_unconditioned.mid"
 
@@ -224,14 +225,15 @@ def plot_threeway_comparison():
       After Stage 1                : step=0 of stage2 log (Stage1 model eval on Chopin test)
       After Stage 2 (best, step50) : step=50 of stage2 log
     """
-    _, t2_evals = load_training_log(STAGE2_CSV)
+    _, t2_evals    = load_training_log(STAGE2_CSV)
+    _, final_evals = load_training_log(STAGE2_FINAL_CSV)
     s1_on_chopin_loss = t2_evals[0]["eval_loss"]      # step 0: Stage 1 model on Chopin test
     s1_on_chopin_acc  = t2_evals[0]["eval_accuracy"]
-    best_idx_s2       = int(np.argmin([r["eval_loss"] for r in t2_evals]))
-    s2_best_eval      = t2_evals[best_idx_s2]
-    s2_best_loss      = s2_best_eval["eval_loss"]
-    s2_best_acc       = s2_best_eval["eval_accuracy"]
-    s2_best_step      = int(s2_best_eval["step"])
+    # Use the final converged run as the official Stage 2 best
+    best_idx_s2  = int(np.argmin([r["eval_loss"] for r in final_evals]))
+    s2_best_loss = final_evals[best_idx_s2]["eval_loss"]
+    s2_best_acc  = final_evals[best_idx_s2]["eval_accuracy"]
+    s2_best_step = int(final_evals[best_idx_s2]["step"])
 
     # Baseline from existing analysis
     baseline_loss = 1.4720
@@ -638,41 +640,43 @@ def plot_piano_roll():
 # ═══════════════════════════════════════════════════════════════════════════
 
 def plot_stage2_comparison():
-    """Overlay eval loss curves: teammate (lr=1e-5, early stop) vs Windows (lr=5e-6)."""
-    _, team_evals = load_training_log(STAGE2_CSV)
-    _, win_evals  = load_training_log(STAGE2_WIN_CSV)
+    """Overlay eval loss curves: teammate / Win-200 / Win-300 (final)."""
+    _, team_evals  = load_training_log(STAGE2_CSV)
+    _, win_evals   = load_training_log(STAGE2_WIN_CSV)
+    _, final_evals = load_training_log(STAGE2_FINAL_CSV)
 
-    team_steps = [r["step"] for r in team_evals]
-    team_el    = [r["eval_loss"] for r in team_evals]
-    win_steps  = [r["step"] for r in win_evals]
-    win_el     = [r["eval_loss"] for r in win_evals]
+    runs = [
+        (team_evals,  "#e67e22", "o", "Teammate  lr=1e-5, dropout=0.15, early-stop"),
+        (win_evals,   "#2980b9", "s", "Win-200   lr=5e-6, dropout=0.15, 200 steps"),
+        (final_evals, "#27ae60", "^", "Win-300   lr=5e-6, dropout=0.15, 300 steps (converged)"),
+    ]
 
-    team_best_idx = int(np.argmin(team_el))
-    win_best_idx  = int(np.argmin(win_el))
-
-    fig, ax = plt.subplots(figsize=(11, 5))
-    fig.suptitle("Stage 2 Hyperparameter Comparison — Eval Loss on Chopin Test Set",
+    fig, ax = plt.subplots(figsize=(12, 5))
+    fig.suptitle("Stage 2 Hyperparameter Comparison — Chopin Étude Test Eval Loss",
                  fontsize=13, fontweight="bold")
 
-    ax.plot(team_steps, team_el, color="#e67e22", marker="o", ms=5, lw=2,
-            label=f"Teammate: dropout=0.15, lr=1e-5, early-stop\n  best step={team_steps[team_best_idx]}, loss={team_el[team_best_idx]:.4f}")
-    ax.plot(win_steps, win_el, color="#2980b9", marker="s", ms=5, lw=2,
-            label=f"Windows: dropout=0.15, lr=5e-6, no early-stop\n  best step={win_steps[win_best_idx]}, loss={win_el[win_best_idx]:.4f}")
+    for evals, color, marker, label in runs:
+        steps = [r["step"] for r in evals]
+        el    = [r["eval_loss"] for r in evals]
+        best  = int(np.argmin(el))
+        ax.plot(steps, el, color=color, marker=marker, ms=5, lw=2,
+                label=f"{label}\n  best={el[best]:.4f} @ step {steps[best]}")
+        ax.axvline(steps[best], color=color, ls="--", alpha=0.4, lw=1)
 
-    ax.axvline(team_steps[team_best_idx], color="#e67e22", ls="--", alpha=0.5)
-    ax.axvline(win_steps[win_best_idx],   color="#2980b9", ls="--", alpha=0.5)
+    # Stage 1 baseline
+    s1_loss = team_evals[0]["eval_loss"]
+    ax.axhline(s1_loss, color="#7f8c8d", ls=":", lw=1.2,
+               label=f"Stage 1 model on Chopin test: {s1_loss:.4f}")
 
-    # Stage 1 baseline reference (step 0 of each)
-    ax.axhline(team_el[0], color="#7f8c8d", ls=":", lw=1.2,
-               label=f"Stage 1 baseline (teammate start): {team_el[0]:.4f}")
+    ax.set_xlabel("Stage 2 Training Step"); ax.set_ylabel("Eval Loss (↓ better)")
+    ax.legend(fontsize=8, loc="upper right"); ax.grid(alpha=0.25)
 
-    ax.set_xlabel("Stage 2 Training Step"); ax.set_ylabel("Chopin Test Eval Loss (lower = better)")
-    ax.legend(fontsize=8.5, loc="upper right"); ax.grid(alpha=0.25)
-
-    # Annotation: Windows still decreasing
-    ax.annotate("Still improving →\n(no convergence)", xy=(win_steps[-1], win_el[-1]),
-                xytext=(win_steps[-1] - 60, win_el[-1] - 0.003),
-                arrowprops=dict(arrowstyle="->", color="#2980b9"), fontsize=8, color="#2980b9")
+    # Convergence annotation on final run
+    final_steps = [r["step"] for r in final_evals]
+    final_el    = [r["eval_loss"] for r in final_evals]
+    ax.annotate("Converged\n(step 275=300)", xy=(final_steps[-1], final_el[-1]),
+                xytext=(final_steps[-1] - 80, final_el[-1] - 0.0025),
+                arrowprops=dict(arrowstyle="->", color="#27ae60"), fontsize=8, color="#27ae60")
 
     fig.tight_layout()
     out = PLOTS_DIR / "stage2_runs_comparison.png"

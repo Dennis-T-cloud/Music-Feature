@@ -85,3 +85,4 @@ htmlcov/
 
 # local md files
 local_docs/
+HANDOFF*.*
