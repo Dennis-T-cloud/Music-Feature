@@ -1,5 +1,50 @@
-你的 Windows 机器（stage2_chopin_improved/）已按可对比口径重跑：200 步，`--eval-max-files 6`，产生 9 个 Chopin test eval 点。best eval loss = 1.4129（step 200），可以和其他人的结果比较；但它没有低于旧阈值 1.4106，所以应记录为“可比较但未超过原 Stage 2 best”的尝试，不替代之前的最佳 Stage 2 结果。
+## ★ 当前任务（第三次跑，优先执行）
 
+上次 Win 机器跑了 200 步（lr=5e-6），eval loss 在第 200 步仍单调下降（1.4204→1.4129），**没有收敛**，也没有保存 adapter。本次目标：
+- 延长到 **300 步**（估计约 45 min）
+- 加上 `--save-dir`，确保 adapter 被保存下来
+
+### 直接运行（假设环境已就绪）
+
+```powershell
+conda activate cse153
+cd Music-Feature
+
+python Task1/train/aria_finetune_maestro.py ^
+  --model-dir Task1/.vendor/aria-hf ^
+  --maestro-root data/maestro-v3.0.0 ^
+  --split train ^
+  --composer “Chopin” ^
+  --title-contains “Etude” ^
+  --max-files 64 ^
+  --train-mode lora ^
+  --resume-adapter Task1/result/stage1_maestro_best_adapter ^
+  --lora-r 8 ^
+  --lora-alpha 16 ^
+  --lora-dropout 0.15 ^
+  --lr 5e-6 ^
+  --max-steps 300 ^
+  --eval-split test ^
+  --eval-max-files 6 ^
+  --eval-every 25 ^
+  --early-stop-patience 4 ^
+  --early-stop-min-delta 0.001 ^
+  --save-dir Task1/result/stage2_chopin_final ^
+  --seed 42
+```
+
+### 传回 Mac 的文件
+
+```text
+Task1/result/stage2_chopin_final/
+    training_log.csv
+    adapter_model.safetensors
+    adapter_config.json
+```
+
+> **判断标准**：如果 `min(eval_loss) < 1.4129`（上次最优）就是有效改进，否则存档即可。
+
+---
 
 # Handoff Manual — Win RTX 3060 台式机操作指南
 **任务**：下载 Aria 基础模型 → Stage 2 改进重训 → 生成 MIDI  
