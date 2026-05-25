@@ -1,141 +1,259 @@
-# Task 2 — Win Machine Handoff
+# Task 2 Handoff - Windows RTX 3060 Ti Run
 
 **Status as of 2026-05-24**
 
-The notebook `task2.ipynb` is structurally complete and runs end-to-end on CPU. The remaining
-bottleneck is full model training, which requires a GPU machine. Do everything below inside the
-`Task2/` directory unless stated otherwise.
+Task 2 has now been run end-to-end on the Windows GPU machine. The full
+Seq2Seq LSTM training completed, the final MIDI output was generated, and the
+main evaluation/visualization artifacts were produced.
+
+Work from inside `Task2/` unless noted otherwise.
 
 ---
 
-## What is already done (Mac side)
+## Current status
 
 | Item | State |
 |------|-------|
-| Data loading & tokenization | ✓ |
-| Seq2Seq LSTM model (bidir encoder + decoder) | ✓ |
-| Training loop with teacher-forcing decay | ✓ |
-| Constrained autoregressive sampling | ✓ |
-| MIDI decode & `symbolic_conditioned.mid` output | ✓ |
-| Piano-roll visualization | ✓ |
-| `summarize_generation` metrics function | ✓ added |
-| `plot_feature_distribution` histogram function | ✓ added |
-| Copy output → `../outputs/symbolic_conditioned.mid` | ✓ added (last cell) |
-| **Full training** | ✗ **needs GPU** |
-| Feature distribution plot (needs full-model output) | ✗ run after training |
+| NES-MDB MIDI dataset downloaded/extracted | Done |
+| Full training on CUDA | Done |
+| Best checkpoint saved | Done |
+| Final conditioned MIDI generated | Done |
+| Output copied to `../outputs/` | Done |
+| Piano-roll plot generated | Done |
+| Feature-distribution plot generated | Done |
+| Multi-temperature candidates generated | Done |
+| Demo MIDI velocity fixed for playback | Done |
 
 ---
 
-## What to do on the Win machine
+## Training details
 
-### 0. Setup
+Environment used:
 
-```bash
-pip install pretty_midi torch numpy matplotlib tqdm pandas
+```text
+GPU: NVIDIA GeForce RTX 3060 Ti
+Python env: .conda/envs/cse153
+Torch: CUDA-enabled
 ```
 
-Make sure `Task2/nesmdb_midi/train`, `valid`, `test` folders exist (≈4 500 + 400 + 373 `.mid`
-files). If only the `.tar.gz` is present the notebook extracts it automatically on first run.
+Training setup:
 
----
+```text
+train files found: 4502
+valid files found: 403
+test files found: 373
 
-### 1. Run full training
+usable train samples: 3794
+usable valid samples: 325
+usable test samples: 246
 
-Open `Task2/task2.ipynb` in Jupyter and locate the cell that contains:
-
-```python
-RUN_FULL_TRAINING = False  # Change to True when ready.
-```
-
-Change it to `True`, then run **all cells from the top** in order. The training will use:
-
-```
-4 502 train files + 403 valid files
 batch_size = 32
-epochs = 20          ← recommended starting point
+epochs = 20
 lr = 5e-4
-hidden_dim = 256, num_layers = 1
+hidden_dim = 256
+num_layers = 1
 ```
 
-Expected behaviour: validation loss should drop from ~4.4 to roughly 2.5–3.0 by epoch 20. If the
-curve is still clearly declining at epoch 20 try 30 epochs. If it plateaus before epoch 15 stop
-early.
+Best validation result:
 
-The best checkpoint is saved as `Task2/nes_seq2seq_best.pt`.
+```text
+best validation loss = 1.4149 at epoch 10
+final epoch validation loss = 1.4330
+final epoch validation perplexity = 4.19
+```
 
-> **Training time estimate:** ~20–40 min with a mid-range GPU. CPU only would take 6+ hours.
+Test result after loading `nes_seq2seq_best.pt`:
+
+```text
+test loss = 1.4571834019628482
+test perplexity = 4.29384843523682
+```
+
+This passes the earlier sanity target of test perplexity `< 15`.
 
 ---
 
-### 2. Regenerate the output MIDI
+## Main artifacts
 
-After training finishes, run the generation cell (Section 8 in the notebook). It will:
+These are the important outputs:
 
-1. Load `nes_seq2seq_best.pt` automatically.
-2. Save `Task2/symbolic_conditioned.mid` (P1 melody + generated TR bass).
-3. The **last cell** (Section copy) then copies it to `../outputs/symbolic_conditioned.mid`.
+| File | Purpose |
+|------|---------|
+| `Task2/nes_seq2seq_best.pt` | Best trained checkpoint, about 6 MB |
+| `Task2/symbolic_conditioned.mid` | Final P1 melody + generated TR bass |
+| `outputs/symbolic_conditioned.mid` | Copied final MIDI for project-level output |
+| `Task2/piano_roll_generated.png` | Piano-roll visualization |
+| `Task2/feature_distribution.png` | Generated-vs-ground-truth feature distribution |
+| `Task2/nes_training_curve.png` | Training/validation loss curve |
+| `Task2/generated_candidates/` | Multi-temperature candidate MIDIs and PNGs |
+| `Task2/demo_outputs/` | Demo comparison MIDIs |
 
-If you want to try different temperatures, run `save_versions_for_midi` with a few test files
-and pick the best-sounding one. Then overwrite `symbolic_conditioned.mid` manually before
-running the last copy cell.
+The final generated MIDI uses this NES-MDB source file:
 
-Recommended generation settings (already in the notebook):
+```text
+Task2/nesmdb_midi/test/002_1943_TheBattleofMidway_00_01Title.mid
+```
+
+This corresponds to:
+
+```text
+1943: The Battle of Midway - Title
+```
+
+Final MIDI content check:
+
+```text
+Task2/symbolic_conditioned.mid
+duration: 12.763 seconds
+track 0: Pulse 1 Melody, 41 notes, pitch range 60-105
+track 1: Generated Triangle Bass, 40 notes, pitch range 36-57
+```
+
+The final MIDI file is small, currently under 1 KB, but that is expected because
+it is a short symbolic MIDI file, not audio.
+
+---
+
+## Playback note
+
+The original NES-MDB MIDI files use very low note velocities. Some players make
+the original P1/TR tracks almost inaudible. This affected the demo files:
+
+```text
+*_no_bass.mid
+*_truth_bass_only.mid
+*_truth_with_bass.mid
+```
+
+Those files have now been normalized for playback. Low velocities were raised to
+90 in:
+
+```text
+Task2/demo_outputs/*.mid
+Task2/symbolic_conditioned.mid
+outputs/symbolic_conditioned.mid
+Task2/symbolic_conditioned_with_groundtruth.mid
+```
+
+Important: any MIDI we hand off or demo should have note velocities high enough
+for normal playback. The notebook now includes `normalize_midi_velocity()` and
+calls it when exporting conditioned generations and demo comparison files. If a
+teammate manually creates or replaces a MIDI, they should do the same check:
+
+```text
+P1 / original copied tracks: velocity >= 90
+Generated bass: velocity around 100
+```
+
+Recommended listening order:
+
+```text
+Task2/demo_outputs/*_no_bass.mid
+Task2/demo_outputs/*_generated_with_bass.mid
+Task2/demo_outputs/*_truth_with_bass.mid
+Task2/demo_outputs/*_truth_bass_only.mid
+```
+
+Use MuseScore, VLC, or a DAW. `*_generated_with_bass.mid` is the easiest file for
+hearing what the model adds.
+
+---
+
+## Runner added
+
+Because the local environment did not have Jupyter/nbconvert installed, a small
+runner was added:
+
+```text
+Task2/run_task2.py
+```
+
+It executes the code cells from `task2.ipynb` in order and applies the Windows
+GPU handoff settings:
+
+```text
+RUN_FULL_TRAINING = True
+epochs = 20
+skip debug training cell
+replace the notebook's /tmp eval path with a local file
+```
+
+To rerun everything:
+
+```powershell
+.\.conda\Scripts\conda.exe run -n cse153 python Task2\run_task2.py
+```
+
+The notebook itself was also updated so the full-training cell now shows:
+
 ```python
-temperature=0.75, top_k=20, max_p1=192, max_gen_len=300, generated_transpose=0
+RUN_FULL_TRAINING = True
+epochs=20
 ```
 
 ---
 
-### 3. Run the evaluation and visualization cells
+## Git / sharing note
 
-After generation, run sections 9, 9.5, and 10 in order:
+The current `.gitignore` ignores many generated Task 2 artifacts, including:
 
-- **Section 9** — Piano roll (saved as `piano_roll_generated.png`)
-- **Section 9.5** — Metrics table + feature distribution histogram (saved as
-  `feature_distribution.png`)
-- **Section 10** — Multi-temperature candidates (saves CSV + per-candidate PNGs)
+```text
+Task2/nesmdb_midi/
+Task2/nesmdb_midi.tar.gz
+Task2/*.pt
+Task2/*.png
+Task2/*.csv
+Task2/generated_candidates/
+Task2/demo_outputs/
+outputs/*.mid
+```
 
-All plots are saved in `Task2/`. Copy them back to the repo or leave them for the final
-notebook submission.
+Therefore `git status` only shows the tracked notebook edit and the new runner:
 
----
+```text
+M  Task2/task2.ipynb
+?? Task2/run_task2.py
+```
 
-### 4. Files to copy back
+If the next teammate needs to commit generated outputs, they must either use
+`git add -f` for specific files or add narrow exceptions to `.gitignore`.
 
-After everything is done, make sure these files are committed or shared:
+Recommended files to share even if they are ignored:
 
-| File | Location |
-|------|----------|
-| `nes_seq2seq_best.pt` | `Task2/` |
-| `symbolic_conditioned.mid` | `Task2/` **and** `../outputs/` |
-| `piano_roll_generated.png` | `Task2/` |
-| `feature_distribution.png` | `Task2/` |
-| `task2.ipynb` (with outputs) | `Task2/` |
-
----
-
-## Optional: stretch goal (4-track → 5th track)
-
-Not started. See `local_docs/2a_and_more.md` Phase 3 for the design. Only attempt if time
-allows after the main pipeline is solid.
-
-High-level plan:
-1. Merge P1 + P2 + TR + NO tokens into a single flattened sequence per file (add a `SEP=108`
-   token between each track).
-2. Create a new `Seq2Seq_5th_Track` class with `hidden_dim=512` and `num_layers=2` to handle
-   the denser context.
-3. Target: generate a new track (e.g. a drumkit or piano chord pattern) conditioned on the
-   merged 4-track context.
-4. Save output as `outputs/symbolic_5th_track.mid`.
+```text
+Task2/nes_seq2seq_best.pt
+Task2/symbolic_conditioned.mid
+outputs/symbolic_conditioned.mid
+Task2/piano_roll_generated.png
+Task2/feature_distribution.png
+Task2/nes_training_curve.png
+Task2/demo_outputs/
+```
 
 ---
 
-## Quick sanity checks
+## Remaining optional work
 
-Before considering training done:
+No blocker remains for the baseline Task 2 deliverable.
 
-- [ ] Training curve shows clear loss decrease (not flat from epoch 1)
-- [ ] `nes_seq2seq_best.pt` exists and is > 5 MB
-- [ ] `symbolic_conditioned.mid` plays back with audible melody + bass (open in MuseScore or a DAW)
-- [ ] Piano roll shows both P1 (blue) and generated TR (red) with reasonable pitch separation
-- [ ] Test perplexity after full training should be < 15 (currently 25.15 with debug model)
+Optional improvements:
+
+1. Listen through `Task2/generated_candidates/` and manually choose a better
+   candidate than the current first candidate.
+2. Save the chosen candidate over `Task2/symbolic_conditioned.mid`, then copy it
+   to `../outputs/symbolic_conditioned.mid`.
+3. If the final notebook submission must include live cell outputs, open
+   `task2.ipynb` in Jupyter and rerun from the top. The current local runner did
+   not execute through the Jupyter UI.
+4. Stretch goal: implement the 4-track-to-5th-track model described in earlier
+   planning notes. This has not been started.
+
+---
+
+## Sanity checklist
+
+- [x] Training curve shows clear loss decrease.
+- [x] `nes_seq2seq_best.pt` exists and is greater than 5 MB.
+- [x] `symbolic_conditioned.mid` contains audible melody and generated bass after velocity fix.
+- [x] Piano roll shows P1 and generated TR with pitch separation.
+- [x] Test perplexity after full training is below 15.
