@@ -85,7 +85,7 @@ htmlcov/
 
 # local md files
 local_docs/
-HANDOFF*.*
+# HANDOFF*.*
 
 # Task 2 related files...
 Task2/nesmdb_midi/
