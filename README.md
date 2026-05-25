@@ -1,9 +1,18 @@
-https://drive.google.com/drive/folders/10hskwNoc_T4xdWO_-kd17gbMA0LfmZaz?usp=sharing
-
 # Music Feature — CSE 153 / 253 Assignment 2
 
 **Course:** UCSD CSE 153 / 253 · Spring 2026  
 **Group members:** Dennis (Dennis-T-cloud), HanyuanZhang25
+
+---
+
+## Submission / Google Drive
+
+Upload the final generated MIDI results from the local `outputs/` folder to Google Drive:
+
+- `outputs/symbolic_unconditioned.mid`
+- `outputs/symbolic_conditioned.mid`
+
+Google Drive folder: https://drive.google.com/drive/folders/10hskwNoc_T4xdWO_-kd17gbMA0LfmZaz?usp=sharing
 
 ---
 
