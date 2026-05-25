@@ -41,6 +41,10 @@ data/
 outputs/*.mid
 outputs/*.wav
 
+# Keep final submission MIDIs
+!outputs/symbolic_conditioned.mid
+!outputs/symbolic_unconditioned.mid
+
 # Local model/vendor/cache artifacts
 Task1/.cache/
 Task1/.vendor/
