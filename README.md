@@ -21,7 +21,7 @@ Google Drive folder: https://drive.google.com/drive/folders/10hskwNoc_T4xdWO_-kd
 | Task | Topic | Status |
 | --- | --- | --- |
 | Task 1 | Symbolic unconditioned music generation | ✅ Complete |
-| Task 2 | *(in progress)* | 🔧 |
+| Task 2 | Symbolic conditioned music generation (NES melody → bass) | ✅ Complete |
 
 ---
 
@@ -59,10 +59,9 @@ The original Stage 2 run (lr=1e-5) overfit severely after step 50 (loss rose fro
 
 | File | Description |
 | --- | --- |
-| `outputs/symbolic_unconditioned.mid` | Unconditioned generation from final adapter (tempo-fixed) |
-| `outputs/symbolic_conditioned.mid` | Conditioned generation (tempo-fixed) |
+| `outputs/symbolic_unconditioned.mid` | Unconditioned generation from final adapter (tempo-fixed), 108.5 s, 1358 notes |
 
-> **Note:** Aria's `to_midi()` has a known bug — it writes BPM (120) directly as μs/beat, producing a 0.006 s file. Both outputs have been fixed (`set_tempo=500000`).
+> **Note:** Aria's `to_midi()` has a known bug — it writes BPM (120) directly as μs/beat, producing a 0.006 s file. The output has been fixed (`set_tempo=500000`).
 
 ### Adapters
 
@@ -71,6 +70,42 @@ The original Stage 2 run (lr=1e-5) overfit severely after step 50 (loss rose fro
 | Stage 1 best | `Task1/result/stage1_maestro_best_adapter/` | MAESTRO val 1.7248 |
 | Stage 2 final ★ | `Task1/result/stage2_chopin_final/` | Chopin test 1.4111 |
 | Stage 2 teammate | `Task1/result/stage2_chopin_etude_best_adapter/` | Chopin test 1.4150 |
+
+---
+
+## Task 2: Symbolic Conditioned Generation
+
+### Task 2 Method
+
+Sequence-to-sequence LSTM trained on the **NES-MDB** MIDI dataset.  
+Given the Pulse 1 (P1) melody track, the model generates the Triangle (TR) bass track.
+
+```
+P1 melody tokens
+  → Bidirectional LSTM encoder (hidden=256, 1 layer)
+  → LSTM decoder with teacher-forcing annealing
+  → TR bass tokens
+```
+
+**Tokenisation:** interleaved event-duration scheme, vocab=109 (PAD / BOS / EOS / REST / 88 pitches / 16 duration bins)  
+**Constrained sampling:** even positions → pitch/REST/EOS only; odd positions → duration tokens only  
+**Training:** cross-entropy NTP loss, batch=32, lr=5e-4, 20 epochs, CUDA (RTX 3060 Ti)
+
+### Task 2 Results
+
+| Run | Best val loss | Test loss | Test perplexity |
+| --- | --- | --- | --- |
+| Debug (300 files, 3 epochs) | — | — | 25.15 |
+| **Full training (4502 files, 20 epochs)** | **1.4149 (epoch 10)** | **1.4572** | **4.29** |
+
+### Task 2 Generated output
+
+| File | Description |
+| --- | --- |
+| `outputs/symbolic_conditioned.mid` | P1 melody (41 notes, pitch 60–105) + generated TR bass (40 notes, pitch 36–57), 12.8 s |
+
+Full experiment log: [`notebooks/task2_analysis.ipynb`](notebooks/task2_analysis.ipynb)  
+Dataset: NES-MDB MIDI — 4502 / 403 / 373 train / valid / test files
 
 ---
 
@@ -96,13 +131,18 @@ Music-Feature/
 │       ├── stage1_maestro_training_log.csv
 │       ├── stage2_chopin_etude_training_log.csv
 │       └── plots/                      # 10 PNG analysis figures
+├── Task2/
+│   ├── task2.ipynb                     # Seq2Seq pipeline (training + generation)
+│   ├── run_task2.py                    # Script runner for Windows GPU
+│   ├── handoff.md                      # Windows run results & artifacts log
+│   └── nesmdb_midi/                    # NES-MDB dataset (not tracked)
 ├── notebooks/
-│   └── task1_analysis.ipynb            # Full experiment log & analysis
+│   ├── task1_analysis.ipynb            # Task 1 experiment log & analysis
+│   └── task2_analysis.ipynb            # Task 2 experiment log & analysis
 ├── outputs/
-│   ├── symbolic_unconditioned.mid      # ★ final generated MIDI (tempo-fixed)
-│   └── symbolic_conditioned.mid
+│   ├── symbolic_unconditioned.mid      # ★ Task 1 final MIDI (tempo-fixed, 108 s)
+│   └── symbolic_conditioned.mid        # ★ Task 2 final MIDI (P1 + TR bass, 12.8 s)
 ├── workbook.ipynb                      # Assignment submission notebook
-├── HANDOFF_WIN_RTX3060.md              # Windows GPU training instructions
 └── data/                               # MAESTRO dataset (not tracked)
 ```
 
