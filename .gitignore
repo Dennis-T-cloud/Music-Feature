@@ -86,3 +86,13 @@ htmlcov/
 # local md files
 local_docs/
 HANDOFF*.*
+
+# Task 2 related files...
+Task2/nesmdb_midi/
+Task2/nesmdb_midi.tar.gz
+Task2/*.pt
+Task2/*.pth
+Task2/generated_candidates/
+Task2/demo_outputs/
+Task2/*.csv
+Task2/*.png
