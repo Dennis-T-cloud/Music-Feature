@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c ' *)",
+      "Bash(python3)",
+      "Bash(jupyter --version)",
+      "Bash(jupyter nbconvert *)",
+      "Bash(python3 -c \"import pandas, numpy, matplotlib, pretty_midi; print\\('OK'\\)\")"
+    ]
+  }
+}
